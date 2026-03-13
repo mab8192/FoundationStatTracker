@@ -1,0 +1,7 @@
+{
+  "Name": "Resource Stats Tracker",
+  "Author": "Michael",
+  "Description": "Tracks production and consumption of all resources per day, week, and month.",
+  "Version": "1.0.0",
+  "Website": ""
+}

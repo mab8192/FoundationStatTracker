@@ -1,7 +1,8 @@
 {
   "Name": "Resource Stats Tracker",
-  "Author": "Michael",
+  "Author": "mab8192",
   "Description": "Tracks production and consumption of all resources per day, week, and month.",
   "Version": "1.0.0",
+  "Id": "MAB_STATS_TRACKER",
   "Website": ""
 }

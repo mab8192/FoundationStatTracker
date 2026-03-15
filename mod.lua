@@ -83,15 +83,25 @@ local function onResProduced(res)
 end
 
 function COMP_STAT_CONTROLLER:registerProductionListeners(level)
+    ---@type COMPONENT_MANAGER
     local workplaceManager = level:getComponentManager("COMP_WORKPLACE")
     if not workplaceManager then
         mod:log("Workplace manager does not exist.")
         return
     end
 
-    local comps = workplaceManager:getAllComponent()
-    mod:log("Found " .. tostring(#comps) .. " workplaces.")
+    -- Register listener when new workplaces are created
+    event.register(self, workplaceManager.ON_COMPONENT_INITIALIZED, function(comp)
+        event.register(self, comp.ON_WORKPLACE_PRODUCED, onResProduced)
+    end)
 
+    -- Unregister when workplaces are destroyed
+    event.register(self, workplaceManager.ON_COMPONENT_DESTROYED, function(comp)
+        event.unregister(self, comp.ON_WORKPLACE_PRODUCED)
+    end)
+
+    -- For all existing workplaces, attach the listener
+    local comps = workplaceManager:getAllComponent()
     comps:forEach(function(comp)
         event.register(self, comp.ON_WORKPLACE_PRODUCED, onResProduced)
     end)

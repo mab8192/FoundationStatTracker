@@ -41,7 +41,19 @@ local function logAverages(history, periodName)
     mod:log(str)
 end
 
----comment
+---@param eventName string
+---@param historyName string
+---@param history table
+---@param currentStats table
+---@return table
+local function handleNewPeriod(eventName, historyName, history, currentStats)
+    mod:log(eventName)
+    table.insert(history, currentStats)
+    if #history > 5 then table.remove(history, 1) end
+    logAverages(history, historyName)
+    return {} -- Reset stats by returning a new table
+end
+
 ---@param res RESOURCE_COLLECTION_VALUE
 local function onResProduced(res)
     local collection = res.Collection
@@ -56,17 +68,22 @@ local function onResProduced(res)
         local resource = rqpair.Resource
         ---@type integer
         local quant = rqpair.Quantity
-        dailyStats[resource.ResourceName] = dailyStats[resource.ResourceName] or 0
-        dailyStats[resource.ResourceName] = dailyStats[resource.ResourceName] + quant
-        weeklyStats[resource.ResourceName] = weeklyStats[resource.ResourceName] or 0
-        weeklyStats[resource.ResourceName] = weeklyStats[resource.ResourceName] + quant
-        monthlyStats[resource.ResourceName] = monthlyStats[resource.ResourceName] or 0
-        monthlyStats[resource.ResourceName] = monthlyStats[resource.ResourceName] + quant
+
+        if not resource or not resource.ResourceName then return end
+
+        local resName = resource.ResourceName
+        if not resName then return end
+
+        local amount = quant or 0
+
+        dailyStats[resName] = (dailyStats[resName] or 0) + amount
+        weeklyStats[resName] = (weeklyStats[resName] or 0) + amount
+        monthlyStats[resName] = (monthlyStats[resName] or 0) + amount
     end)
 end
 
-function COMP_STAT_CONTROLLER:registerProductionListeners()
-    local workplaceManager = self:getLevel():getComponentManager("COMP_WORKPLACE")
+function COMP_STAT_CONTROLLER:registerProductionListeners(level)
+    local workplaceManager = level:getComponentManager("COMP_WORKPLACE")
     if not workplaceManager then
         mod:log("Workplace manager does not exist.")
         return
@@ -83,33 +100,31 @@ end
 function COMP_STAT_CONTROLLER:onEnabled()
     mod:log("COMP_STAT_CONTROLLER ENABLED!")
 
-    self:registerProductionListeners()
+    local level = self:getLevel()
+    if not level then
+        mod:log("Level is nil, cannot initialize stat controller.")
+        return
+    end
+
+    self:registerProductionListeners(level)
 
     ---@type COMP_MAIN_GAME_LOOP
-    local compMainGameLoop = self:getLevel():find("COMP_MAIN_GAME_LOOP")
+    local compMainGameLoop = level:find("COMP_MAIN_GAME_LOOP")
+    if not compMainGameLoop then
+        mod:log("COMP_MAIN_GAME_LOOP not found.")
+        return
+    end
 
     event.register(self, compMainGameLoop.ON_NEW_DAY, function()
-        mod:log("New Day!")
-        table.insert(dailyStatsHistory, dailyStats)
-        if #dailyStatsHistory > 5 then table.remove(dailyStatsHistory, 1) end
-        logAverages(dailyStatsHistory, "Daily")
-        dailyStats = {} -- reset stats
+        dailyStats = handleNewPeriod("New Day!", "Daily", dailyStatsHistory, dailyStats)
     end)
 
     event.register(self, compMainGameLoop.ON_NEW_WEEK, function()
-        mod:log("New Week!")
-        table.insert(weeklyStatsHistory, weeklyStats)
-        if #weeklyStatsHistory > 5 then table.remove(weeklyStatsHistory, 1) end
-        logAverages(weeklyStatsHistory, "Weekly")
-        weeklyStats = {} -- reset stats
+        weeklyStats = handleNewPeriod("New Week!", "Weekly", weeklyStatsHistory, weeklyStats)
     end)
 
     event.register(self, compMainGameLoop.ON_NEW_MONTH, function()
-        mod:log("New Month!")
-        table.insert(monthlyStatsHistory, monthlyStats)
-        if #monthlyStatsHistory > 5 then table.remove(monthlyStatsHistory, 1) end
-        logAverages(monthlyStatsHistory, "Monthly")
-        monthlyStats = {} -- reset stats
+        monthlyStats = handleNewPeriod("New Month!", "Monthly", monthlyStatsHistory, monthlyStats)
     end)
 end
 

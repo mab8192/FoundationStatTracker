@@ -12,6 +12,30 @@ local dailyStats = {}
 local weeklyStats = {}
 local monthlyStats = {}
 
+---comment
+---@param res RESOURCE_COLLECTION_VALUE
+local function onResProduced(res)
+    local collection = res.Collection
+
+    if not collection then
+        mod:log("No collection found for resource production.")
+        return
+    end
+
+    collection:forEach(function(rqpair)
+        ---@type RESOURCE
+        local resource = rqpair.Resource
+        ---@type integer
+        local quant = rqpair.Quantity
+        dailyStats[resource.ResourceName] = dailyStats[resource.ResourceName] or 0
+        dailyStats[resource.ResourceName] = dailyStats[resource.ResourceName] + quant
+        weeklyStats[resource.ResourceName] = weeklyStats[resource.ResourceName] or 0
+        weeklyStats[resource.ResourceName] = weeklyStats[resource.ResourceName] + quant
+        monthlyStats[resource.ResourceName] = monthlyStats[resource.ResourceName] or 0
+        monthlyStats[resource.ResourceName] = monthlyStats[resource.ResourceName] + quant
+    end)
+end
+
 function COMP_STAT_CONTROLLER:registerProductionListeners()
     local workplaceManager = self:getLevel():getComponentManager("COMP_WORKPLACE")
     if not workplaceManager then
@@ -23,21 +47,7 @@ function COMP_STAT_CONTROLLER:registerProductionListeners()
     mod:log("Found " .. tostring(#comps) .. " workplaces.")
 
     comps:forEach(function(comp)
-        event.register(self, comp.ON_WORKPLACE_PRODUCED, function(res)
-            local collection = res.Collection
-            collection:forEach(function(rqpair)
-                ---@type RESOURCE
-                local resource = rqpair.Resource
-                ---@type integer
-                local quant = rqpair.Quantity
-                dailyStats[resource.ResourceName] = dailyStats[resource.ResourceName] or 0
-                dailyStats[resource.ResourceName] = dailyStats[resource.ResourceName] + quant
-                weeklyStats[resource.ResourceName] = weeklyStats[resource.ResourceName] or 0
-                weeklyStats[resource.ResourceName] = weeklyStats[resource.ResourceName] + quant
-                monthlyStats[resource.ResourceName] = monthlyStats[resource.ResourceName] or 0
-                monthlyStats[resource.ResourceName] = monthlyStats[resource.ResourceName] + quant
-            end)
-        end)
+        event.register(self, comp.ON_WORKPLACE_PRODUCED, onResProduced)
     end)
 end
 

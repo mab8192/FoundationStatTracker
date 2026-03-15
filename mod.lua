@@ -12,6 +12,35 @@ local dailyStats = {}
 local weeklyStats = {}
 local monthlyStats = {}
 
+local dailyStatsHistory = {}
+local weeklyStatsHistory = {}
+local monthlyStatsHistory = {}
+
+local function logAverages(history, periodName)
+    local sums = {}
+    local numPeriods = #history
+    if numPeriods == 0 then return end
+
+    for _, stats in ipairs(history) do
+        for resName, quant in pairs(stats) do
+            sums[resName] = (sums[resName] or 0) + quant
+        end
+    end
+
+    local str = "Average " .. periodName .. " Stats (over last " .. tostring(numPeriods) .. " periods):"
+    local hasStats = false
+    for resName, total in pairs(sums) do
+        local avg = total / numPeriods
+        str = str .. string.format("\n  - %s: %.2f", resName, avg)
+        hasStats = true
+    end
+
+    if not hasStats then
+        str = str .. "\n  (none)"
+    end
+    mod:log(str)
+end
+
 ---comment
 ---@param res RESOURCE_COLLECTION_VALUE
 local function onResProduced(res)
@@ -61,19 +90,25 @@ function COMP_STAT_CONTROLLER:onEnabled()
 
     event.register(self, compMainGameLoop.ON_NEW_DAY, function()
         mod:log("New Day!")
-        mod:log("Daily Stats: \n" .. tostring(dailyStats))
+        table.insert(dailyStatsHistory, dailyStats)
+        if #dailyStatsHistory > 5 then table.remove(dailyStatsHistory, 1) end
+        logAverages(dailyStatsHistory, "Daily")
         dailyStats = {} -- reset stats
     end)
 
     event.register(self, compMainGameLoop.ON_NEW_WEEK, function()
         mod:log("New Week!")
-        mod:log("Weekly Stats: \n" .. tostring(weeklyStats))
+        table.insert(weeklyStatsHistory, weeklyStats)
+        if #weeklyStatsHistory > 5 then table.remove(weeklyStatsHistory, 1) end
+        logAverages(weeklyStatsHistory, "Weekly")
         weeklyStats = {} -- reset stats
     end)
 
     event.register(self, compMainGameLoop.ON_NEW_MONTH, function()
         mod:log("New Month!")
-        mod:log("Monthly Stats: \n" .. tostring(monthlyStats))
+        table.insert(monthlyStatsHistory, monthlyStats)
+        if #monthlyStatsHistory > 5 then table.remove(monthlyStatsHistory, 1) end
+        logAverages(monthlyStatsHistory, "Monthly")
         monthlyStats = {} -- reset stats
     end)
 end
